@@ -111,8 +111,8 @@ python main_optimized.py          # With caching/Optuna improvements
 ```bash
 conda activate alignn_exact
 cd dealignn/
-# ⚠️ REQUIRED: Copy degraph.py to your ALIGNN environment
-cp degraph.py /home/marcus/anaconda3/envs/alignn_exact/lib/python3.8/site-packages/jarvis/core/
+# ⚠️ REQUIRED: Copy degraphs.py to your ALIGNN environment
+cp degraphs.py /home/marcus/anaconda3/envs/alignn_exact/lib/python3.8/site-packages/jarvis/core/
 # Specify feature list and descriptors file path in fine-tuning.py
 python fine-tuning.py
 ```
@@ -151,7 +151,7 @@ python train.py
 - **alignn**: 
   - `train_alignn.py`: Standard version
   - `train_alignnV2.py`: Improved version
-- **dealignn**: Requires `degraph.py` script placement in JARVIS environment
+- **dealignn**: Requires `degraphs.py` script placement in JARVIS environment
 
 ## Datasets
 
@@ -173,14 +173,14 @@ The `trained_models/` folder contains pre-trained models following the naming co
 - [ ] For hybridized models: Run preprocessing scripts
 - [ ] Check model-specific `HowToRun*.txt` files
 - [ ] Configure feature lists and file paths in model scripts
-- [ ] For de-ALIGNN: Install `degraph.py` in JARVIS environment
+- [ ] For de-ALIGNN: Install `degraphs.py` in JARVIS environment
 - [ ] Run training or inference
 
 ## Troubleshooting
 
 1. **Environment issues**: See `ENVIRONMENT_SETUP.md` troubleshooting section
 2. **Model-specific issues**: Check `HowToRun*.txt` files in each model folder
-3. **Missing degraph.py**: Ensure it's copied to the correct JARVIS path for de-ALIGNN
+3. **Missing degraphs.py**: Ensure it's copied to the correct JARVIS path for de-ALIGNN
 4. **Dataset format errors**: Verify your model expects the correct `id_prop.csv` format
 
 ## Status
