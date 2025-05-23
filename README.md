@@ -13,7 +13,7 @@ This repository contains datasets and trained models for the paper: **"Improving
 ├── dematformer/                # Hybridized Matformer (de-Matformer)
 ├── deMEGNet/                   # Hybridized MEGNet (de-MEGNet) [In Development]
 ├── datasets/                   # All datasets organized by property
-├── trained_models/             # Pre-trained models for Figure 4 results
+├── trained_models/             # Pre-trained models
 └── ENVIRONMENT_SETUP.md        # Environment setup instructions
 ```
 
