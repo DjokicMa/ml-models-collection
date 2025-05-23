@@ -1,0 +1,1 @@
+Please note that, the results presented in the paper are based on an in-house pytorch implementation of MEGNet, which is very "dirty". Since the developers have recently released an official pytorch version of MEGNet based on DGL (https://github.com/materialsvirtuallab/matgl), we are working on providing the de-MEGNet based on the newly released version of MEGNet.

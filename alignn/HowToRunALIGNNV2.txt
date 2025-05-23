@@ -1,0 +1,313 @@
+Enhanced ALIGNN Implementation Guide with Cache Optimization and MAE Reporting
+This guide explains how to use the enhanced ALIGNN (Atomistic Line Graph Neural Network) implementation with improved features including LMDB cache management, MAE reporting, and normalized loss tracking.
+New Features in This Enhanced Version
+
+LMDB Cache Management: Create cache once, reuse for multiple experiments
+MAE Reporting: Track Mean Absolute Error for all outputs at each epoch
+Normalized Loss: Scale losses by dataset size for fair comparison
+Progress Tracking: Real-time progress bars with detailed metrics
+
+Installation Requirements
+Basic Dependencies
+bashconda create -n alignn_env python=3.8
+conda activate alignn_env
+conda install -c conda-forge pytorch cudatoolkit
+conda install -c conda-forge dgl-cuda
+pip install jarvis-tools
+pip install ase
+pip install torch-geometric
+pip install tqdm  # For progress bars
+Enhanced Training Script Setup
+
+Copy the enhanced trainV2.py to your ALIGNN directory:
+bashcp trainV2.py /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/
+
+Ensure your train_alignnV2.py imports the enhanced version:
+pythonfrom alignn.trainV2 import train_dgl  # Enhanced version
+
+
+Data Preparation
+ALIGNN requires your dataset to be organized with:
+
+A collection of structure files (CIF format recommended)
+An id_prop.csv file that maps structure filenames to target properties
+
+Example id_prop.csv:
+csvstructure_001.cif,1.234
+structure_002.cif,2.345
+structure_003.cif,3.456
+Usage Instructions
+Step 1: Configure Your Training Run
+Create a configuration JSON file (e.g., run2-GraphandAtom.json) with your model parameters:
+json{
+  "batch_size": 16,
+  "epochs": 300,
+  "learning_rate": 0.001,
+  "cutoff": 8.0,
+  "atom_features": "cgcnn",
+  "neighbor_strategy": "k-nearest",
+  "max_neighbors": 12,
+  "keep_data_order": true,
+  "output_dir": "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2",
+  "train_ratio": 0.8,
+  "val_ratio": 0.1,
+  "test_ratio": 0.1,
+  "pin_memory": true,
+  "num_workers": 8,
+  "use_lmdb": true,
+  "write_predictions": true,
+  "save_dataloader": true,
+  "model": {
+    "name": "alignn_atomwise",
+    "alignn_layers": 4,
+    "gcn_layers": 4,
+    "atom_embedding_size": 64,
+    "edge_embedding_size": 64,
+    "triplet_embedding_size": 64,
+    "embedding_features": 256,
+    "hidden_features": 256,
+    "output_features": 1,
+    "atomwise_output_features": 0,
+    "graphwise_weight": 1.0,
+    "atomwise_weight": 0.0,
+    "calculate_gradient": false
+  }
+}
+Step 2: Create LMDB Cache (One-Time Setup)
+NEW FEATURE: Create the LMDB cache once to save time on subsequent runs:
+bashCUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom.json" \
+  --file_format "cif" \
+  --batch_size 16 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --dry_run
+This will:
+
+Process all structure files and create LMDB cache
+Display dataset statistics
+Exit without training
+Save cache metadata for verification
+
+Step 3: Train with Enhanced Features
+Use the cached data and enable MAE reporting and normalized loss:
+bashCUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom.json" \
+  --file_format "cif" \
+  --batch_size 16 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2" \
+  --lmdb_cache_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --report_mae \
+  --normalize_loss >> align-log-enhanced.out
+Step 4: Run Multiple Experiments with Same Cache
+You can now run different hyperparameter configurations without recreating the cache:
+bash# Experiment 1: Different batch size
+CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom.json" \
+  --file_format "cif" \
+  --batch_size 32 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_bs32" \
+  --lmdb_cache_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --report_mae \
+  --normalize_loss >> align-log-bs32.out
+
+# Experiment 2: Different learning rate
+CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom-lr001.json" \
+  --file_format "cif" \
+  --batch_size 16 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_lr001" \
+  --lmdb_cache_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --report_mae >> align-log-lr001.out
+Advanced Features
+Multi-GPU Training
+For multi-GPU training, remove the CUDA_VISIBLE_DEVICES=0 flag:
+bashPYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom.json" \
+  --file_format "cif" \
+  --batch_size 64 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_multigpu" \
+  --lmdb_cache_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --report_mae >> align-log-multigpu.out
+Force and Stress Prediction
+To train with forces and stresses, modify your configuration file:
+json{
+  "model": {
+    "name": "alignn_atomwise",
+    "calculate_gradient": true,
+    "gradwise_weight": 1.0,
+    "stresswise_weight": 0.1,
+    "atomwise_output_features": 3
+  }
+}
+And provide the key names in your command:
+bashCUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-forces.json" \
+  --file_format "cif" \
+  --batch_size 8 \
+  --target_key "total_energy" \
+  --force_key "forces" \
+  --stresswise_key "stresses" \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_forces" \
+  --report_mae \
+  --normalize_loss >> align-log-forces.out
+Model Restarting
+To continue training from a checkpoint:
+bashCUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignnV2.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2-GraphandAtom.json" \
+  --file_format "cif" \
+  --batch_size 16 \
+  --restart_model_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2/best_model.pt" \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_continued" \
+  --lmdb_cache_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2_cache" \
+  --report_mae >> align-log-continued.out
+Output Files and Analysis
+New Output Files (Enhanced Version)
+In addition to standard outputs, you'll find:
+
+history_train_mae.json: MAE values for each component during training
+history_val_mae.json: MAE values for each component during validation
+test_mae.json: Final test set MAE for all components
+cache_metadata.pkl: Metadata about the LMDB cache (for verification)
+
+Enhanced Console Output Example
+================================================================================
+Epoch 25 Summary:
+================================================================================
+Time - Train: 45.23s, Val: 12.45s
+
+Loss (normalized):
+  Total    - Train: 0.0234, Val: 0.0198
+  Graph    - Train: 0.0156, Val: 0.0134
+  Gradient - Train: 0.0078, Val: 0.0064
+
+MAE:
+  graph      - Train: 0.0891, Val: 0.0823
+  gradient   - Train: 0.0234, Val: 0.0198
+
+Saving best model
+================================================================================
+Analyzing Results
+pythonimport json
+import matplotlib.pyplot as plt
+import numpy as np
+
+run_dir = '/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run2'
+
+# Load training history
+with open(f'{run_dir}/history_train.json', 'r') as f:
+    train_history = json.load(f)
+
+with open(f'{run_dir}/history_val.json', 'r') as f:
+    val_history = json.load(f)
+
+# Load MAE history (NEW)
+with open(f'{run_dir}/history_train_mae.json', 'r') as f:
+    train_mae = json.load(f)
+
+with open(f'{run_dir}/history_val_mae.json', 'r') as f:
+    val_mae = json.load(f)
+
+# Plot training curves
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+
+# Loss plot
+ax1.plot([h[0] for h in train_history], label='Train Loss')
+ax1.plot([h[0] for h in val_history], label='Val Loss')
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Loss')
+ax1.set_title('Training and Validation Loss')
+ax1.legend()
+
+# MAE plot (NEW)
+ax2.plot([h['graph'] for h in train_mae if h['graph'] is not None], label='Train MAE')
+ax2.plot([h['graph'] for h in val_mae if h['graph'] is not None], label='Val MAE')
+ax2.set_xlabel('Epoch')
+ax2.set_ylabel('MAE')
+ax2.set_title('Mean Absolute Error')
+ax2.legend()
+
+plt.tight_layout()
+plt.savefig(f'{run_dir}/training_curves.png')
+plt.show()
+
+# Load test results
+with open(f'{run_dir}/test_mae.json', 'r') as f:
+    test_mae = json.load(f)
+
+print("Test Set Performance:")
+for key, value in test_mae.items():
+    if value is not None:
+        print(f"  {key}: {value:.4f}")
+Memory Optimization
+The script automatically limits GPU memory usage to 50% by default. To adjust:
+
+Modify the memory fraction in your training script:
+pythontorch.cuda.set_per_process_memory_fraction(0.7, 0)  # Use 70% instead
+
+Use gradient checkpointing for very large models (add to config):
+json{
+  "model": {
+    "use_gradient_checkpointing": true
+  }
+}
+
+
+Troubleshooting
+Cache Verification Failed
+If you see "Cache mismatch" errors:
+
+Delete the old cache
+Create a new cache with --dry_run
+Ensure your dataset hasn't changed between cache creation and usage
+
+Out of Memory Errors
+
+Reduce batch size
+Enable gradient accumulation
+Use mixed precision training (add to config):
+json{
+  "dtype": "float16"
+}
+
+
+Slow Data Loading
+
+Increase num_workers in config
+Ensure LMDB cache is on fast storage (SSD preferred)
+Use pin_memory: true for GPU training
+
+Best Practices
+
+Always create cache first: Use --dry_run before starting experiments
+Monitor MAE trends: MAE is often more interpretable than loss
+Use normalized loss: Especially important with imbalanced train/val/test splits
+Save configurations: Keep different JSON configs for each experiment
+Log everything: Use descriptive log file names for each run
+
+Example Workflow for Hyperparameter Optimization
+bash# 1. Create cache once
+python train_alignnV2.py --config run2.json --dry_run --output_dir cache/
+
+# 2. Try different learning rates
+for lr in 0.001 0.0005 0.0001; do
+    python train_alignnV2.py --config run2_lr${lr}.json \
+        --lmdb_cache_path cache/ \
+        --output_dir runs/lr_${lr} \
+        --report_mae >> logs/lr_${lr}.log
+done
+
+# 3. Try different architectures
+for layers in 2 4 6; do
+    python train_alignnV2.py --config run2_layers${layers}.json \
+        --lmdb_cache_path cache/ \
+        --output_dir runs/layers_${layers} \
+        --report_mae >> logs/layers_${layers}.log
+done
+This enhanced workflow significantly reduces experiment time by reusing the same preprocessed cache across all runs.

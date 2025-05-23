@@ -1,0 +1,165 @@
+ALIGNN Implementation Guide with GPU Optimization
+
+This guide explains how to use the ALIGNN (Atomistic Line Graph Neural Network) implementation for materials property prediction. ALIGNN is particularly effective for learning crystal structure-property relationships with enhanced performance for forces and atomwise predictions.
+Installation Requirements
+
+In addition to the standard dependencies, you'll need to install:
+bashconda create -n alignn_env python=3.8
+conda activate alignn_env
+conda install -c conda-forge pytorch cudatoolkit
+conda install -c conda-forge dgl-cuda
+pip install jarvis-tools
+pip install ase
+pip install torch-geometric
+
+
+
+Data Preparation
+ALIGNN requires your dataset to be organized with:
+
+A collection of structure files (CIF format recommended)
+An id_prop.csv file that maps structure filenames to target properties
+
+Usage Instructions
+
+Step 1: Configure Your Training Run
+Create a configuration JSON file (e.g., run1.json) with your model parameters:
+json
+{
+  "batch_size": 32,
+  "epochs": 300,
+  "cutoff": 8.0,
+  "atom_features": "cgcnn",
+  "neighbor_strategy": "k-nearest",
+  "max_neighbors": 12,
+  "keep_data_order": true,
+  "output_dir": "/path/to/output",
+  "train_ratio": 0.8,
+  "val_ratio": 0.1,
+  "test_ratio": 0.1,
+  "pin_memory": true,
+  "num_workers": 8,
+  "model": {
+    "name": "alignn",
+    "alignn_layers": 4,
+    "gcn_layers": 4,
+    "atom_embedding_size": 64,
+    "edge_embedding_size": 64,
+    "triplet_embedding_size": 64,
+    "embedding_features": 256,
+    "hidden_features": 256,
+    "output_features": 1
+  }
+}
+
+
+
+Step 2: Run the Training Script
+Use the exact command provided below to train your model:
+
+bash
+CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignn.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1.json" \
+  --file_format "cif" \
+  --batch_size 32 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1" >> align-log.out
+
+
+Step 3: Multi-GPU Training (Optional)
+For multi-GPU training, remove the CUDA_VISIBLE_DEVICES=0 flag and ALIGNN will automatically utilize all available GPUs:
+
+bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignn.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1.json" \
+  --file_format "cif" \
+  --batch_size 32 \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1" >> align-log.out
+
+Step 4: Model Restarting (Optional)
+To continue training from a checkpoint:
+
+bash
+CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignn.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1.json" \
+  --file_format "cif" \
+  --batch_size 32 \
+  --restart_model_path "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1/checkpoint/best_model.pt" \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1_continued" >> align-log-continued.out
+
+
+
+Advanced Features
+Force and Stress Prediction
+To train with forces and stresses, modify your configuration file:
+
+json
+{
+  "model": {
+    "name": "alignn_atomwise",
+    "calculate_gradient": true,
+    "gradwise_weight": 1.0,
+    "stresswise_weight": 0.1
+  }
+}
+
+
+And provide the key names in your command:
+
+bash
+CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python /mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/alignn/train_alignn.py \
+  --root_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/datasets/relaxed_structures_hse_bg/" \
+  --config_name "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1.json" \
+  --file_format "cif" \
+  --batch_size 32 \
+  --target_key "total_energy" \
+  --force_key "forces" \
+  --stresswise_key "stresses" \
+  --output_dir "/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1_with_forces" >> align-log-forces.out
+
+
+Memory Optimization
+The script automatically limits GPU memory usage to 50% by default. If you need to adjust this:
+
+Modify the PYTORCH_CUDA_ALLOC_CONF environment variable
+Add the --workers parameter to control data loading parallelism
+
+Output Files and Analysis
+After training completes, you'll find:
+
+best_model.pt: The trained model with best validation performance
+checkpoint/: Directory containing training checkpoints
+train_stats.json: Training statistics including loss and metrics over time
+val_stats.json: Validation statistics
+test_stats.json: Test set performance metrics
+config.json: Copy of the configuration used
+preds.csv: Predictions on the test set
+
+Analyzing Results
+You can analyze your model's performance using:
+
+
+python
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load training stats
+with open('/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1/train_stats.json', 'r') as f:
+    train_stats = json.load(f)
+
+# Load validation stats
+with open('/mnt/iscsi/MLModels/learning_hybridizing_descriptors_upload/alignn/runs/run1/val_stats.json', 'r') as f:
+    val_stats = json.load(f)
+
+# Plot training and validation loss
+plt.figure(figsize=(10, 6))
+plt.plot(train_stats['loss'], label='Training Loss')
+plt.plot(val_stats['loss'], label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.savefig('loss_curve.png')
+For more advanced analysis, you can use the prediction CSV to calculate additional metrics or create scatter plots of predicted vs. actual values.

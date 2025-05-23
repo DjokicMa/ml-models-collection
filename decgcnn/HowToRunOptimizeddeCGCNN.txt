@@ -1,0 +1,98 @@
+Enhanced DECGCNN Implementation with LMDB Caching and Optuna Optimization
+This guide explains how to use the enhanced DECGCNN implementation featuring LMDB caching for faster data loading and comprehensive hyperparameter optimization with Optuna.
+
+Installation Requirements
+In addition to the standard dependencies, you'll need to install:
+bashconda install -c conda-forge optuna
+conda install -c conda-forge msgpack-python
+pip install msgpack-numpy
+pip install lmdb
+
+
+Usage Instructions
+
+Step 1: Create the LMDB Cache (Run Once)
+bash
+CUDA_VISIBLE_DEVICES=1 python main_optimized.py \
+  --create-lmdb-cache \
+  --lmdb-path ./lmdbCache \
+  --lmdb-map-size 1e11 \
+  ../datasets/relaxed_structures_hse_bg_decgcnn ../datasets/relaxed_structures_hse_bg_decgcnn/structure_descriptors_normalized.csv
+
+Step 2: Run Enhanced Hyperparameter Optimization
+bash
+CUDA_VISIBLE_DEVICES=1 PYTHONWARNINGS=ignore python main_optimized.py \
+  --train-ratio 0.8 --val-ratio 0.1 --test-ratio 0.1 \
+  --workers 10 --epochs 300 --print-freq 1 \
+  --hp-opt --n-trials 150 --trial-epochs 75 \
+  --scheduler-opt \
+  --lmdb-path ./lmdbCache \
+  ../datasets/relaxed_structures_hse_bg_decgcnn ../datasets/relaxed_structures_hse_bg_decgcnn/structure_descriptors_normalized.csv \
+  >> decgcnn_optimize_comprehensive.out
+
+Step 3: Train Final Model with Best Parameters
+After optimization completes, train your final model with the best parameters:
+bash
+CUDA_VISIBLE_DEVICES=1 PYTHONWARNINGS=ignore python main_optimized.py \
+  --batch-size <best_batch_size> --n-conv <best_n_conv> --n-h <best_n_h> \
+  --lr <best_lr> --optim <best_optim> --scheduler <best_scheduler> \
+  --atom-fea-len <best_atom_fea_len> --h-fea-len <best_h_fea_len> \
+  --weight-decay <best_weight_decay> --lr-gamma <best_gamma> \
+  --train-ratio 0.8 --val-ratio 0.1 --test-ratio 0.1 \
+  --workers 10 --epochs 300 \
+  --lmdb-path ./lmdbCache \
+  ../datasets/relaxed_structures_hse_bg_decgcnn ../datasets/relaxed_structures_hse_bg_decgcnn/structure_descriptors_normalized.csv
+
+
+
+Enhanced Hyperparameter Search Features
+The new implementation performs a much more comprehensive search:
+
+Network Architecture Parameters
+
+Batch sizes: [16, 32, 64, 128, 256]
+Atom feature lengths: [32, 64, 128, 256, 512]
+Hidden feature lengths: [64, 128, 256, 512, 1024]
+Convolutional layers: 1-7
+Hidden layers: 1-5
+
+
+Optimization Parameters
+
+Learning rates: 5e-5 to 5e-1 (log scale)
+Optimizers: SGD, Adam
+SGD momentum: 0.5 to 0.99
+Weight decay: 1e-7 to 1e-2 (log scale)
+
+
+Learning Rate Schedulers
+
+Step scheduler with configurable milestones and gamma
+Cosine annealing scheduler
+Exponential scheduler with configurable decay rate
+
+
+Time and Performance Tracking
+
+Records epoch times during training
+Stores comprehensive trial data including duration
+Saves results in a detailed JSON format for further analysis
+
+
+
+Output Files and Analysis
+The optimization process creates several files for analysis:
+
+best_params.json: The optimal hyperparameters found
+all_trials.json: Complete trial data including parameters, performance, and timing
+trial_timing.csv: Detailed epoch-by-epoch timing information for each trial
+
+Analyzing Results
+You can analyze the optimization results with the built-in Optuna visualization tools:
+pythonimport optuna
+from optuna.visualization import plot_param_importances, plot_optimization_history
+
+study = optuna.load_study(study_name="decgcnn_study", storage="sqlite:///decgcnn_study.db")
+plot_param_importances(study)
+plot_optimization_history(study)
+Additionally, you can analyze the timing data to identify efficiency bottlenecks and trends.
