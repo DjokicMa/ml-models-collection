@@ -77,8 +77,8 @@ python main_optimized.py          # With caching/Optuna improvements
 ```bash
 conda activate alignn_exact  
 cd alignn/
-python train_alignn.py            # Standard version
-python train_alignnV2.py          # With improvements
+python alignn/train_alignn.py            # Standard version
+python alignn/train_alignnV2.py          # With improvements
 ```
 
 ### Hybridized Models
@@ -103,7 +103,8 @@ conda activate cgcnn-gpu
 cd decgcnn/
 # Specify feature list at the beginning of main.py and predict.py
 # Input the path of descriptors file into the scripts
-python main.py
+python main.py                    # Standard version
+python main_optimized.py          # With caching/Optuna improvements
 ```
 
 **de-ALIGNN:**
