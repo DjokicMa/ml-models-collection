@@ -1,6 +1,30 @@
 # Crystal Structure Deep Learning Models
 
-This repository contains datasets and trained models for the paper: **"Improving deep representation learning for crystal structures by learning and hybridizing human-designed descriptors"**
+his repository contains datasets and trained models from well-established graph neural network (GNN) models for crystal structures, alongside our ongoing work to develop a topological deep learning GNN model.
+
+The key GNN models included are:
+
+- **CGCNN** (Crystal Graph Convolutional Neural Networks)  
+  _Xie, T. & Grossman, J.C. (2018). Crystal Graph Convolutional Neural Networks for an Accurate and Interpretable Prediction of Material Properties. [Physical Review Letters, 120(14), 145301](https://doi.org/10.1103/PhysRevLett.120.145301)._
+
+- **ALIGNN** (Atomistic Line Graph Neural Network)  
+  _Choudhary, K. et al. (2021). Atomistic Line Graph Neural Network for Improved Materials Property Predictions. [npj Computational Materials, 7(1), 185](https://doi.org/10.1038/s41524-021-00615-5)._
+
+- **MATFORMER** (Materials Transformer)  
+  _Yan, K., Liu, Y., Lin, Y., & Ji, S. (2022). Periodic Graph Transformers for Crystal Material Property Prediction. In *Proceedings of the 36th Annual Conference on Neural Information Processing Systems (NeurIPS 2022)*. [Link](https://proceedings.neurips.cc/paper/2022/hash/7a7fdbac62d2e6c9d4b5ee9e3b136f0a-Abstract.html)_
+
+- **MEGNet** (Materials Graph Network)  
+  _Chen, J. et al. (2019). Graph Networks as a Universal Machine Learning Framework for Molecules and Crystals. [Chemistry of Materials, 31(9), 3564–3572](https://doi.org/10.1021/acs.chemmater.9b01294)._
+
+- **E3NN** (Euclidean Neural Networks)  
+  _Geiger, M. et al. (2022). E(3)-Equivariant Graph Neural Networks for Data-Efficient and Accurate Interatomic Potentials. [Nature Communications, 13(1), 1–11](https://www.nature.com/articles/s41467-022-28670-1)._
+
+- **HIENet** (Hierarchical Interaction-Enhanced Network)  
+  _Bai, Y. et al. (2022). HIENet: Hierarchical Interaction-Enhanced Graph Neural Network for Accurate Molecular Property Prediction. [AAAI Conference on Artificial Intelligence, 36(2), 1950–1958](https://ojs.aaai.org/index.php/AAAI/article/view/20849)._
+
+Our repository also includes hybridized (de-prefix) implementations combining features from these models to push the state-of-the-art in crystal structure property prediction.  
+See: [Science Advances, 9(45), eadi3245 (2023)](https://doi.org/10.1126/sciadv.adi3245).
+
 
 ## Project Structure
 
