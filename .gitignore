@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+
+# Environment
+env/
+*.yml
+
+# Datasets
+datasets/
+*.tar
+*.db
+*.out
+*.csv
+
+# Jupyter/VSCode
+.ipynb_checkpoints/
+.vscode/
